@@ -128,4 +128,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-*.data
+valid_courses.txt
+invalid_courses.txt

@@ -102,7 +102,7 @@ def scrape_cc(url):
         return [None, url[-8:].upper()]
 
 #Save a course to file
-def save_to_file(course, success_filename = 'valid_courses.data', fail_filename = 'invalid_courses.data'):
+def save_to_file(course, success_filename = 'valid_courses.txt', fail_filename = 'invalid_courses.txt'):
     if course[0]:
         with open(success_filename, 'a+') as f:
             for section in course:
