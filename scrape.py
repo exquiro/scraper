@@ -3,7 +3,7 @@ import requests, re, pprint, pandas as pd, json
 from bs4 import BeautifulSoup
 from collections import OrderedDict
 
-code_map = {'CCST': 'Science and Technology', 'CCGL': 'Global Issues', 'CCHU': 'Humanitites', 'CCCH': 'China'}
+code_map = {'CCST': 'Science and Technology', 'CCGL': 'Global Issues', 'CCHU': 'Humanities', 'CCCH': 'China'}
 
 #Get the URLs of the pages
 def get_area_urls(filename = 'area-pages.txt'):
@@ -47,7 +47,6 @@ def scrape_cc(url):
 
         soup = BeautifulSoup(html_content, features = 'html.parser')
 
-        content['Property'] = 'Value'
         content['Code'] = url.rsplit('/', maxsplit = 1)[1].upper()
         content['Link'] = url
 
@@ -78,19 +77,17 @@ def scrape_cc(url):
 
         #Get table of assessments
         amt_table_str = str(soup.find(id = 'ass').findNext('table'))
-        amt_pd_table = pd.read_html(amt_table_str, header = 0)[0].set_index('Assessment Tasks').to_dict()
+        amt_pd_table = pd.read_html(amt_table_str, header = 0)[0].set_index('Assessment Tasks').dropna().to_dict()
         amt_methods = amt_pd_table['Weighting']
         amt_methods_header = OrderedDict()
-        amt_methods_header['Assessment Tasks'] = 'Weighting'
         for k, v in amt_methods.items():
             amt_methods_header[k] = v
 
         #Get study load table
         study_load_table_str = str(soup.find(id = 'load').findNext('table'))
-        study_load_pd_table = pd.read_html(study_load_table_str, header = 0)[0].set_index('Activities').to_dict()
+        study_load_pd_table = pd.read_html(study_load_table_str, header = 0)[0].set_index('Activities').dropna().to_dict()
         study_load = study_load_pd_table['Number of hours']
         study_load_header = OrderedDict()
-        study_load_header['Activities'] = 'Number of hours'
         for k, v in study_load.items():
             study_load_header[k] = v
 
