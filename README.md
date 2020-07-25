@@ -1,6 +1,6 @@
-# commoncourse
+# commoncourse/scraper
 
-Scrape and filter HKU's Common Core courses.
+Scrape HKU's Common Core courses.
 
 Usage:
 
