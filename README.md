@@ -1,4 +1,4 @@
-# commoncourse/scraper
+# exquiro/scraper
 
 Scrape HKU's Common Core courses.
 
