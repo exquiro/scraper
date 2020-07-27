@@ -18,35 +18,48 @@ def get_area_urls(filename = 'area-pages.txt'):
 
 #Download course timetable
 def get_timetable(filename = 'timetable-page.txt'):
+    #Get the link to the timetable pdf
     with open(filename, 'r') as f:
         url = f.readlines()[0]
     
+    #Download the PDF
     r = requests.get(url)
-
     with open('timetable.pdf', 'wb') as f:
         f.write(r.content)
     
+    #Read every line from the PDF, and strip trailing whitespace
     lines = []
     with open('timetable.pdf', 'rb') as f:
         pdf = PyPDF2.PdfFileReader(f)
         for page in range(pdf.numPages):
             lines.extend([line.strip() for line in pdf.getPage(page).extractText().split('\n')])
-
+    
+    #Delete the PDF
     os.remove('timetable.pdf')
 
+    #Regex for detecting CC codes
     code = re.compile("CC[SHGC][TULH][0-9]{4}")
+
+    #Regex for detecting timeslots - the delivery mode is always right after this
     time = re.compile("[0-9]{2}:[0-9]{2} - [0-9]{2}:[0-9]{2}")
 
-    keys = []
-    values = []
+    isOnline = OrderedDict()
 
+    lastFound = None
+
+    #Loop through all the lines
     for i, v in enumerate(lines):
+        #If a new CC is found, update the last found CC
         if (code.search(v)):
-            keys.append(v[:8])
-        elif (time.search(v)):
-            values.append(lines[i + 1].strip() if lines[i + 1].strip() in ['Online', 'Mixed'] else 'Offline')
+            lastFound = v[:8]
 
-    isOnline = dict((keys[i], values[i]) for i in range(len(keys)))
+        #If a time slot is found, the very next one is the delivery mode
+        elif (time.search(v)):
+            #Get the delivery mode
+            delivery = lines[i + 1].strip() if lines[i + 1].strip() in ['Online', 'Mixed'] else 'Offline'
+            
+            #Set the delivery mode for the last CC found
+            isOnline[lastFound] = delivery
     
     return isOnline
     
@@ -148,6 +161,7 @@ def save_to_file(course, success_filename = 'valid_courses.txt', fail_filename =
 
 if __name__ == '__main__':
     onlineDict = get_timetable()
+
     for area in get_area_urls():
         for link in get_all_cc_links(area):
             save_to_file(scrape_cc(link, onlineDict))
