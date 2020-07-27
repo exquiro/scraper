@@ -1,4 +1,4 @@
-import requests, re, pprint, pandas as pd, json
+import requests, re, pprint, pandas as pd, json, PyPDF2, os
 
 from bs4 import BeautifulSoup
 from collections import OrderedDict
@@ -16,6 +16,40 @@ def get_area_urls(filename = 'area-pages.txt'):
     
     return urls
 
+#Download course timetable
+def get_timetable(filename = 'timetable-page.txt'):
+    with open(filename, 'r') as f:
+        url = f.readlines()[0]
+    
+    r = requests.get(url)
+
+    with open('timetable.pdf', 'wb') as f:
+        f.write(r.content)
+    
+    lines = []
+    with open('timetable.pdf', 'rb') as f:
+        pdf = PyPDF2.PdfFileReader(f)
+        for page in range(pdf.numPages):
+            lines.extend([line.strip() for line in pdf.getPage(page).extractText().split('\n')])
+
+    os.remove('timetable.pdf')
+
+    code = re.compile("CC[SHGC][TULH][0-9]{4}")
+    time = re.compile("[0-9]{2}:[0-9]{2} - [0-9]{2}:[0-9]{2}")
+
+    keys = []
+    values = []
+
+    for i, v in enumerate(lines):
+        if (code.search(v)):
+            keys.append(v[:8])
+        elif (time.search(v)):
+            values.append(lines[i + 1].strip() if lines[i + 1].strip() in ['Online', 'Mixed'] else 'Offline')
+
+    isOnline = dict((keys[i], values[i]) for i in range(len(keys)))
+    
+    return isOnline
+    
 #Get the link to every course from a certain area of inquiry/URL
 def get_all_cc_links(url):
     links = []
@@ -31,12 +65,12 @@ def get_all_cc_links(url):
         #Check if link is to a CC
         cc_reg = re.compile(r'/cc[shgc][tulh][0-9]{4}')
         if cc_reg.search(link['href']):
-            links.append(f'https://commoncore.hku.hk{link["href"]}')
+            links.append(f'https://commoncore.hku.hk{link["href"]}')        
 
     return links
 
 #Scrape the details of a single CC
-def scrape_cc(url):
+def scrape_cc(url, onlineDict):
     try:
         content = OrderedDict()
         
@@ -94,6 +128,8 @@ def scrape_cc(url):
         content['Study hours'] = study_load['Total:']
         study_load.pop('Total:')
 
+        content['Delivery mode'] = onlineDict[content['Code']]
+
         return [content, amt_methods_header, study_load_header]
     except:
         return [None, url[-8:].upper()]
@@ -111,6 +147,7 @@ def save_to_file(course, success_filename = 'valid_courses.txt', fail_filename =
             f.write(course[1] + '\n')
 
 if __name__ == '__main__':
+    onlineDict = get_timetable()
     for area in get_area_urls():
         for link in get_all_cc_links(area):
-            save_to_file(scrape_cc(link))
+            save_to_file(scrape_cc(link, onlineDict))
