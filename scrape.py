@@ -62,7 +62,25 @@ def get_timetable(filename = 'timetable-page.txt'):
             isOnline[lastFound] = delivery
     
     return isOnline
-    
+
+#Get the cluster each course belongs to
+def get_thematic_clusters(filename = 'clusters-page.txt'):
+    #Get the link to the clusters page
+    with open(filename, 'r') as f:
+        url = f.readlines()[0]
+
+    r = requests.get(url)
+    r.raise_for_status()
+
+    soup = BeautifulSoup(r.content, features = 'html.parser')
+
+    code = re.compile("CC[SHGC][TULH][0-9]{4}")
+
+    scce, tqm = [list(filter(lambda x: code.search(x), list(pd.read_html(table, header = 0)[0]['Scientific & Technological Literacy']))) \
+                    for table in list(map(str, soup.findAll('table', {'class': 'table table-bordered'})))]
+
+    return scce, tqm
+
 #Get the link to every course from a certain area of inquiry/URL
 def get_all_cc_links(url):
     links = []
@@ -83,7 +101,7 @@ def get_all_cc_links(url):
     return links
 
 #Scrape the details of a single CC
-def scrape_cc(url, onlineDict):
+def scrape_cc(url, onlineDict, scce, tqm):
     try:
         content = OrderedDict()
         
@@ -143,6 +161,13 @@ def scrape_cc(url, onlineDict):
 
         content['Delivery mode'] = onlineDict[content['Code']]
 
+        content['Thematic cluster'] = []
+
+        if content['Code'] in scce:
+            content['Thematic cluster'].append('SCCE')
+        if content['Code'] in tqm:
+            content['Thematic cluster'].append('TQM')
+
         return [content, amt_methods_header, study_load_header]
     except:
         return [None, url[-8:].upper()]
@@ -160,8 +185,10 @@ def save_to_file(course, success_filename = 'valid_courses.txt', fail_filename =
             f.write(course[1] + '\n')
 
 if __name__ == '__main__':
+    clusters = get_thematic_clusters()
+
     onlineDict = get_timetable()
 
     for area in get_area_urls():
         for link in get_all_cc_links(area):
-            save_to_file(scrape_cc(link, onlineDict))
+            save_to_file(scrape_cc(link, onlineDict, *clusters))
